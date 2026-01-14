@@ -4,89 +4,72 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Upload Parcel Image</title>
-<style>
-  body { font-family: Arial; text-align:center; padding:20px; background:#f7f7f7; }
-  input, select, button { margin:10px; padding:10px; font-size:16px; }
-  img { max-width:80%; margin-top:15px; display:none; border-radius:6px; }
-</style>
 </head>
 <body>
-
 <h2>Upload Parcel Image</h2>
 
-<select id="tracking">
-  <option value="">Loading parcels...</option>
-</select>
-<br>
+<label>Select Tracking Number:</label>
+<input type="text" id="tracking" placeholder="Enter tracking number">
+
+<br><br>
 <input type="file" id="imageInput" accept="image/*" capture="environment">
-<br>
-<img id="preview">
-<br>
-<button id="uploadBtn">Upload Image</button>
+
+<br><br>
+<img id="preview" style="max-width:300px; display:none;"><br>
+
+<button id="uploadBtn">Upload</button>
+
 <p id="status"></p>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwiZjqHfyx2X8c0gL02IWA07ZYV2jm_k4QDkxSCyK5FnzP6vkhmIBdOwm8h4cL-yVx6fA/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyuXNrbCm0l6_2LhN6adU7C9B7A8hC8iD9HI0AcMeDx1CGN_ZWHWjpD9grWKRuXRs_EaA/exec"; // Replace with your web app URL
 
-const trackingSelect = document.getElementById("tracking");
-const imageInput = document.getElementById("imageInput");
-const preview = document.getElementById("preview");
-const statusEl = document.getElementById("status");
 let imageBase64 = "";
+const preview = document.getElementById("preview");
 
-// Load today parcels
-fetch(`${WEB_APP_URL}?action=today`)
-  .then(r => r.json())
-  .then(list => {
-    trackingSelect.innerHTML = "";
-    if(list.length===0){
-      trackingSelect.innerHTML = '<option value="">No parcels today</option>';
-      return;
-    }
-    trackingSelect.innerHTML = '<option value="">Select Tracking</option>';
-    list.forEach(t=>{
-      const opt = document.createElement('option');
-      opt.value = t; opt.textContent = t;
-      trackingSelect.appendChild(opt);
-    });
-  }).catch(err=>{
-    console.error(err);
-    trackingSelect.innerHTML = '<option value="">Error loading parcels</option>';
-  });
-
-// Preview image
-imageInput.addEventListener('change',()=>{
-  const file = imageInput.files[0];
-  if(!file) return;
+document.getElementById("imageInput").addEventListener("change", function() {
+  const file = this.files[0];
+  if (!file) return;
   const reader = new FileReader();
-  reader.onload = ()=>{ imageBase64=reader.result; preview.src=imageBase64; preview.style.display='block'; }
+  reader.onload = function(e) {
+    imageBase64 = e.target.result;
+    preview.src = imageBase64;
+    preview.style.display = "block";
+  };
   reader.readAsDataURL(file);
 });
 
-// Upload image
-document.getElementById('uploadBtn').addEventListener('click', async ()=>{
-  const tracking = trackingSelect.value;
-  if(!tracking || !imageBase64){ alert("Select tracking and image"); return; }
-  statusEl.textContent = "Uploading...";
-  try{
-    const res = await fetch(WEB_APP_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({tracking:tracking,image:imageBase64})
+document.getElementById("uploadBtn").addEventListener("click", async function() {
+  const tracking = document.getElementById("tracking").value.trim();
+  const status = document.getElementById("status");
+
+  if (!tracking || !imageBase64) {
+    alert("Enter tracking number and select an image");
+    return;
+  }
+
+  status.textContent = "Uploading...";
+
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify({ tracking: tracking, image: imageBase64 }),
+      headers: { "Content-Type": "application/json" }
     });
+
     const data = await res.json();
-    if(data.status==="success"){
-      statusEl.textContent = "✅ Image uploaded";
-      // remove uploaded tracking
-      const opt = trackingSelect.querySelector(`option[value="${tracking}"]`);
-      if(opt) opt.remove();
-      imageInput.value=""; preview.style.display="none";
+    if (data.status === "success") {
+      status.textContent = "✅ Upload successful";
+      preview.style.display = "none";
+      document.getElementById("tracking").value = "";
+      imageBase64 = "";
     } else {
-      statusEl.textContent = "❌ " + data.message;
+      status.textContent = "❌ Upload failed: " + data.message;
     }
-  }catch(err){
+
+  } catch (err) {
     console.error(err);
-    statusEl.textContent = "❌ Upload failed";
+    status.textContent = "❌ Upload error";
   }
 });
 </script>
