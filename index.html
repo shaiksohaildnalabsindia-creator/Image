@@ -8,7 +8,7 @@
 <body>
 <h2>Upload Parcel Image</h2>
 
-<label>Select Tracking Number:</label>
+<label>Tracking Number:</label>
 <input type="text" id="tracking" placeholder="Enter tracking number">
 
 <br><br>
@@ -18,12 +18,10 @@
 <img id="preview" style="max-width:300px; display:none;"><br>
 
 <button id="uploadBtn">Upload</button>
-
 <p id="status"></p>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyuXNrbCm0l6_2LhN6adU7C9B7A8hC8iD9HI0AcMeDx1CGN_ZWHWjpD9grWKRuXRs_EaA/exec"; // Replace with your web app URL
-
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx_Ug48psfPlL7-neXlTQh0EWqg660z3O-QnIf9l3SncvG6-Y82J93pZNah7jw9LVBosg/exec"; // Replace with your web app URL
 let imageBase64 = "";
 const preview = document.getElementById("preview");
 
@@ -53,11 +51,12 @@ document.getElementById("uploadBtn").addEventListener("click", async function() 
   try {
     const res = await fetch(WEB_APP_URL, {
       method: "POST",
-      body: JSON.stringify({ tracking: tracking, image: imageBase64 }),
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tracking: tracking, image: imageBase64 })
     });
 
     const data = await res.json();
+
     if (data.status === "success") {
       status.textContent = "✅ Upload successful";
       preview.style.display = "none";
