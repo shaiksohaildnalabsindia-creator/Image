@@ -5,36 +5,47 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Upload Parcel Image</title>
 <style>
-  body { font-family: Arial; text-align: center; padding: 20px; background:#f8f8f8; }
-  h2 { color: #333; }
-  select, input, button { margin: 10px; padding: 10px; font-size: 16px; }
-  img { max-width: 90%; margin-top: 15px; border-radius: 6px; display: none; }
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg,#fdfbfb,#ebedee);
+  }
+  h2 { color:#333; }
+  select, input, button {
+    margin: 10px;
+    padding: 10px;
+    font-size: 16px;
+  }
+  img {
+    max-width: 90%;
+    margin-top: 15px;
+    border-radius: 6px;
+    display: none;
+  }
 </style>
 </head>
 <body>
 
 <h2>Upload Parcel Image</h2>
 
-<label><b>Select Tracking Number</b></label><br>
-<select id="tracking" style="padding:10px; font-size:16px; width:250px;">
-  <option value="">Enter Tracking Number</option>
+<label for="tracking"><b>Select Tracking Number</b></label><br>
+<select id="tracking" style="width:250px;">
+  <option value="">Loading today’s parcels...</option>
 </select>
-
-<br><br>
+<br>
 
 <input type="file" id="imageInput" accept="image/*" capture="environment">
+<br>
 
-<br><br>
-
-<img id="preview">
-
-<br><br>
+<img id="preview" style="display:none;">
+<br>
 
 <button id="uploadBtn">Upload Image</button>
 <p id="status"></p>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzvWsLwV2ycdiYnPAZdEDbqu9rvkKaFAJIhgETJ8JHQRaeMugOWsDF_6-bUgabSCzBsZg/exec"; // replace with your deployed Apps Script URL
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzvWsLwV2ycdiYnPAZdEDbqu9rvkKaFAJIhgETJ8JHQRaeMugOWsDF_6-bUgabSCzBsZg/exec";
 
 const trackingSelect = document.getElementById("tracking");
 const imageInput = document.getElementById("imageInput");
@@ -43,10 +54,43 @@ const statusEl = document.getElementById("status");
 
 let imageBase64 = "";
 
-/* IMAGE PREVIEW */
+// Load today’s tracking numbers
+async function loadTodayParcels() {
+  try {
+    const res = await fetch(`${WEB_APP_URL}?action=today`);
+    const list = await res.json();
+
+    trackingSelect.innerHTML = "";
+
+    if (!list || list.length === 0) {
+      trackingSelect.innerHTML = `<option value="">No parcels available for today</option>`;
+      return;
+    }
+
+    trackingSelect.innerHTML = `<option value="">Select Tracking Number</option>`;
+    list.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.textContent = t;
+      trackingSelect.appendChild(opt);
+    });
+  } catch(err) {
+    console.error(err);
+    trackingSelect.innerHTML = `<option value="">Error loading parcels</option>`;
+  }
+}
+
+// Auto-open camera on mobile
+window.addEventListener('load', () => {
+  loadTodayParcels();
+  imageInput.click(); // prompt camera automatically
+});
+
+// Image preview
 imageInput.addEventListener("change", () => {
   const file = imageInput.files[0];
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = () => {
     imageBase64 = reader.result;
@@ -56,13 +100,11 @@ imageInput.addEventListener("change", () => {
   reader.readAsDataURL(file);
 });
 
-/* UPLOAD IMAGE */
+// Upload image
 document.getElementById("uploadBtn").addEventListener("click", async () => {
-  const tracking = trackingSelect.value.trim();
-  if (!tracking || !imageBase64) {
-    alert("Select a tracking number and image first!");
-    return;
-  }
+  const tracking = trackingSelect.value;
+  if (!tracking) { alert("Please select a tracking number"); return; }
+  if (!imageBase64) { alert("Please select or take an image"); return; }
 
   statusEl.textContent = "Uploading...";
 
@@ -70,35 +112,32 @@ document.getElementById("uploadBtn").addEventListener("click", async () => {
     const res = await fetch(WEB_APP_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tracking: tracking, image: imageBase64 })
+      body: JSON.stringify({
+        page: "page2",
+        tracking: tracking,
+        image: imageBase64
+      })
     });
 
     const data = await res.json();
 
     if (data.status === "success") {
-      statusEl.innerHTML = `Image uploaded successfully ✅ <br><a href="${data.url}" target="_blank">View Image</a>`;
+      statusEl.textContent = "Image uploaded successfully ✅";
+      // Remove uploaded tracking number
+      const opt = trackingSelect.querySelector(`option[value="${tracking}"]`);
+      if (opt) opt.remove();
+
       imageInput.value = "";
       preview.style.display = "none";
     } else {
       statusEl.textContent = "Upload failed ❌: " + data.message;
     }
+
   } catch(err) {
     console.error(err);
     statusEl.textContent = "Upload error ❌";
   }
 });
-
-/* OPTIONAL: preload tracking numbers */
-/* You can fetch today's tracking numbers using another GET endpoint if you have one */
-// Example:
-// fetch(`${WEB_APP_URL}?action=today`).then(res => res.json()).then(list => {
-//   list.forEach(t => {
-//     const opt = document.createElement("option");
-//     opt.value = t;
-//     opt.textContent = t;
-//     trackingSelect.appendChild(opt);
-//   });
-// });
 </script>
 
 </body>
